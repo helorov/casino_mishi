@@ -35,7 +35,6 @@
             width: 100%;
         }
 
-        /* БАЛАНС */
         .balance-panel {
             background: #000;
             border: 3px solid #b5942e;
@@ -64,7 +63,6 @@
             word-break: break-all;
         }
 
-        /* СТАВКА */
         .bet-panel {
             display: flex;
             align-items: center;
@@ -95,7 +93,6 @@
             font-family: 'Courier New', monospace;
         }
 
-        /* СЛОТЫ */
         .reels-row {
             display: flex;
             flex-direction: row;
@@ -141,7 +138,6 @@
             transition: 0.1s;
         }
 
-        /* СООБЩЕНИЕ */
         .message {
             background: #050505;
             color: #ffd966;
@@ -171,7 +167,6 @@
             50% { transform: scale(1.08); }
         }
 
-        /* КНОПКИ */
         .btn-spin {
             background: #c62828;
             border: none;
@@ -214,7 +209,6 @@
             color: #fff;
         }
 
-        /* ТАБЛИЦА */
         .prizes {
             display: flex;
             gap: 10px;
@@ -231,7 +225,6 @@
             border: 1px solid #997a2e;
         }
 
-        /* АНТИ-ЧИТ ПРЕДУПРЕЖДЕНИЕ */
         .anti-cheat-warning {
             display: none;
             position: fixed;
@@ -275,26 +268,22 @@
 </head>
 <body>
 
-    <!-- АНТИ-ЧИТ ПРЕДУПРЕЖДЕНИЕ -->
     <div class="anti-cheat-warning" id="antiCheatWarning">
         <div>🚫 НЕ ЛЕЗЬ В КОД 🚫</div>
         <div style="font-size:1rem; margin-top:20px; color:#ff9800;">Закрой DevTools и обнови страницу</div>
     </div>
 
     <div class="machine" id="machineContainer">
-        <!-- Баланс -->
         <div class="balance-panel">
             <span class="balance-label">💰 БАЛАНС</span>
-            <span id="balanceDisplay">1.488e+3</span>
+            <span id="balanceDisplay">1488</span>
         </div>
 
-        <!-- Ставка -->
         <div class="bet-panel">
             <span class="bet-label">🎯 СТАВКА</span>
             <input type="text" id="betInput" value="100">
         </div>
 
-        <!-- 5 слотов -->
         <div class="reels-row" id="reelsContainer">
             <div class="slot" id="slot0">0</div>
             <div class="slot" id="slot1">0</div>
@@ -303,16 +292,13 @@
             <div class="slot" id="slot4">0</div>
         </div>
 
-        <!-- Сообщение -->
         <div class="message" id="messageDisplay">
             🎲 ДЕЛАЙ СТАВКУ • КРУТИ
         </div>
 
-        <!-- Кнопки -->
         <button class="btn-spin" id="spinButton">🎰 СПИН</button>
         <button class="btn-reset" id="resetButton">🔄 СБРОС БАЛАНСА</button>
 
-        <!-- Таблица -->
         <div class="prizes">
             <span>🔥 1488 = ×100</span>
             <span>💀 1337 = ×50</span>
@@ -321,142 +307,88 @@
     </div>
 
     <script>
-        // ==================== ЗАЩИТА ОТ DEVTOOLS (FIREFOX + CHROME) ====================
+        // ==================== ЗАЩИТА ОТ DEVTOOLS ====================
         (function() {
             const warning = document.getElementById('antiCheatWarning');
             const machine = document.getElementById('machineContainer');
-            let devToolsOpen = false;
+            let blocked = false;
 
-            // Метод 1: detect DevTools через размер окна
-            function detectBySize() {
+            function detectDevTools() {
                 const threshold = 160;
-                const widthDiff = window.outerWidth - window.innerWidth > threshold;
-                const heightDiff = window.outerHeight - window.innerHeight > threshold;
-                return widthDiff || heightDiff;
+                if (window.outerWidth - window.innerWidth > threshold || 
+                    window.outerHeight - window.innerHeight > threshold) {
+                    return true;
+                }
+                return false;
             }
 
-            // Метод 2: через performance (debugger замедляет)
-            function detectByTiming() {
-                const start = performance.now();
-                debugger;
-                const end = performance.now();
-                return (end - start) > 100;
-            }
-
-            // Метод 3: через console.table / console.log (Firefox + Chrome)
-            function detectByConsole() {
-                let detected = false;
-                const testObj = { a: 1 };
-                const originalTable = console.table;
-                
-                console.table = function() {
-                    detected = true;
-                    console.table = originalTable;
-                };
-                
-                console.table(testObj);
-                console.table = originalTable;
-                return detected;
-            }
-
-            // Метод 4: через requestAnimationFrame (Firefox)
-            function detectByRAF() {
-                let detected = false;
-                const start = performance.now();
-                requestAnimationFrame(() => {
-                    const end = performance.now();
-                    if (end - start > 50) detected = true;
-                });
-                return detected;
-            }
-
-            function showWarning() {
-                if (!devToolsOpen) {
-                    devToolsOpen = true;
+            function block() {
+                if (!blocked) {
+                    blocked = true;
                     warning.classList.add('active');
                     machine.style.display = 'none';
-                    try {
-                        localStorage.removeItem('kazik_balance');
-                    } catch(e) {}
+                    try { localStorage.removeItem('kazik_balance'); } catch(e) {}
                 }
             }
 
-            // Постоянная проверка
             setInterval(() => {
-                if (detectBySize()) {
-                    showWarning();
-                }
+                if (detectDevTools()) block();
             }, 500);
 
             setInterval(() => {
-                if (detectByTiming()) {
-                    showWarning();
-                }
+                const start = performance.now();
+                debugger;
+                if (performance.now() - start > 100) block();
             }, 1500);
 
-            // Блокировка клавиш
             document.addEventListener('keydown', function(e) {
                 if (
-                    e.key === 'F12' ||
-                    e.keyCode === 123 ||
-                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
+                    e.key === 'F12' || e.keyCode === 123 ||
+                    (e.ctrlKey && e.shiftKey && ['I','C','J'].includes(e.key)) ||
                     (e.ctrlKey && e.key === 'U') ||
-                    (e.ctrlKey && e.key === 'S') ||
-                    (e.metaKey && e.altKey && e.key === 'I') ||
-                    (e.metaKey && e.altKey && e.key === 'J') ||
-                    (e.metaKey && e.altKey && e.key === 'C')
+                    (e.metaKey && e.altKey && ['I','J','C'].includes(e.key))
                 ) {
                     e.preventDefault();
                     e.stopPropagation();
-                    showWarning();
+                    block();
                     return false;
                 }
             }, true);
 
-            // Блокировка правой кнопки
-            document.addEventListener('contextmenu', function(e) {
-                e.preventDefault();
-                return false;
-            });
+            document.addEventListener('contextmenu', e => e.preventDefault());
 
-            // Очистка консоли
             setTimeout(() => {
                 console.clear();
-                console.log = () => {};
-                console.warn = () => {};
-                console.error = () => {};
+                ['log','warn','error','table','dir'].forEach(m => console[m] = () => {});
             }, 50);
         })();
 
-        // ==================== ОСНОВНОЙ КОД ====================
+        // ==================== ИГРА ====================
         (function() {
             const SLOTS = 5;
-
             const JACKPOTS = {
                 "1488": { emoji: "🔥", multiplier: 100 },
                 "1337": { emoji: "💀", multiplier: 50 },
                 "228":  { emoji: "🍀", multiplier: 25 }
             };
-
             const GUARANTEE_CODES = ["1488", "1337", "228"];
-            const DEP_INTERVAL = 2 * 60;
+            const DEP_INTERVAL = 120;
             const DEP_AMOUNT = 1500;
             const GUARANTEE_SPINS = 5;
             const STORAGE_KEY = 'kazik_balance';
 
-            let digits = ["0", "0", "0", "0", "0"];
-            let balance = 1.23232e+67; // ОГРОМНЫЙ ДРОБНЫЙ БАЛАНС
-            let currentBet = 1e+30;
+            let digits = ["0","0","0","0","0"];
+            let balance = 1488;
+            let currentBet = 100;
             let depTimer = DEP_INTERVAL;
-            let spinsUntilGuarantee = GUARANTEE_SPINS;
+            let spinsLeft = GUARANTEE_SPINS;
             let timerInterval = null;
+            let spinning = false;
+            let flashTimeout = null;
 
             const slotEls = [
-                document.getElementById('slot0'),
-                document.getElementById('slot1'),
-                document.getElementById('slot2'),
-                document.getElementById('slot3'),
-                document.getElementById('slot4')
+                document.getElementById('slot0'), document.getElementById('slot1'),
+                document.getElementById('slot2'), document.getElementById('slot3'), document.getElementById('slot4')
             ];
             const balanceEl = document.getElementById('balanceDisplay');
             const messageEl = document.getElementById('messageDisplay');
@@ -464,215 +396,164 @@
             const betInput = document.getElementById('betInput');
             const resetBtn = document.getElementById('resetButton');
 
-            let isSpinning = false;
-            let depMessageTimeout = null;
-
-            // Форматирование большого числа
-            function formatBigNumber(num) {
-                if (num >= 1e+6 || num <= 1e-6) {
-                    return num.toExponential(5);
-                }
-                return num.toFixed(2);
+            function fmt(n) {
+                if (n === 0) return '0';
+                if (Math.abs(n) >= 1e6 || (Math.abs(n) < 0.01 && n !== 0)) return n.toExponential(5);
+                if (Number.isInteger(n)) return n.toLocaleString('ru-RU');
+                return n.toFixed(2);
             }
 
-            // Сохранение (храним как строку для больших чисел)
-            function saveBalance() {
-                try {
-                    localStorage.setItem(STORAGE_KEY, balance.toString());
-                } catch (e) {}
+            function save() {
+                try { localStorage.setItem(STORAGE_KEY, balance.toString()); } catch(e) {}
             }
 
-            function loadBalance() {
+            function load() {
                 try {
-                    const saved = localStorage.getItem(STORAGE_KEY);
-                    if (saved !== null) {
-                        const parsed = parseFloat(saved);
-                        if (!isNaN(parsed) && parsed >= 0) return parsed;
+                    const s = localStorage.getItem(STORAGE_KEY);
+                    if (s !== null) {
+                        const p = parseFloat(s);
+                        if (!isNaN(p) && p >= 0) return p;
                     }
-                } catch (e) {}
-                return 1.23232e+67;
+                } catch(e) {}
+                return 1488;
             }
 
             function resetBalance() {
-                balance = 1.23232e+67;
-                saveBalance();
+                balance = 1488;
+                save();
                 updateBalanceDisplay();
-                if (currentBet > balance) setBet(balance * 0.01);
-                messageEl.innerHTML = "🔄 БАЛАНС СБРОШЕН";
+                if (currentBet > balance) setBet(Math.floor(balance / 2));
+                messageEl.innerHTML = "🔄 БАЛАНС СБРОШЕН • 1488";
             }
 
             function giveDep() {
                 balance += DEP_AMOUNT;
-                saveBalance();
+                save();
                 updateBalanceDisplay();
-
                 slotEls.forEach(el => el.classList.add('dep-flash'));
-                setTimeout(() => {
-                    slotEls.forEach(el => el.classList.remove('dep-flash'));
-                }, 500);
-
+                setTimeout(() => slotEls.forEach(el => el.classList.remove('dep-flash')), 500);
                 messageEl.textContent = 'ДЕП ДЕП ДЕП';
                 messageEl.classList.add('dep-message');
-
-                if (depMessageTimeout) clearTimeout(depMessageTimeout);
-                depMessageTimeout = setTimeout(() => {
+                if (flashTimeout) clearTimeout(flashTimeout);
+                flashTimeout = setTimeout(() => {
                     messageEl.classList.remove('dep-message');
                     messageEl.innerHTML = `🧠 +${DEP_AMOUNT}`;
                 }, 1500);
-
-                if (currentBet > balance) setBet(balance * 0.01);
+                if (currentBet > balance) setBet(Math.floor(balance / 2));
             }
 
-            function startDepTimer() {
+            function startTimer() {
                 if (timerInterval) clearInterval(timerInterval);
                 timerInterval = setInterval(() => {
                     depTimer--;
-                    if (depTimer <= 0) {
-                        giveDep();
-                        depTimer = DEP_INTERVAL;
-                    }
+                    if (depTimer <= 0) { giveDep(); depTimer = DEP_INTERVAL; }
                 }, 1000);
             }
 
-            function randomDigit() {
-                return Math.floor(Math.random() * 10).toString();
+            function rnd() { return Math.floor(Math.random() * 10).toString(); }
+
+            function rnd4(exclude = []) {
+                let c;
+                do { c = rnd()+rnd()+rnd()+rnd(); } while (exclude.includes(c));
+                return c;
             }
 
-            function randomFourDigits(excludeCodes = []) {
-                let code;
-                do {
-                    code = '';
-                    for (let i = 0; i < 4; i++) {
-                        code += randomDigit();
-                    }
-                } while (excludeCodes.includes(code));
-                return code;
-            }
-
-            function renderDigits() {
-                for (let i = 0; i < SLOTS; i++) {
-                    slotEls[i].textContent = digits[i];
-                }
+            function render() {
+                for (let i = 0; i < SLOTS; i++) slotEls[i].textContent = digits[i];
             }
 
             function updateBalanceDisplay() {
-                balanceEl.textContent = formatBigNumber(balance);
+                balanceEl.textContent = fmt(balance);
                 balanceEl.style.color = balance < currentBet ? '#ff6b6b' : '#ffd966';
             }
 
             function clearGlow() {
-                slotEls.forEach(el => {
-                    el.classList.remove('jackpot-glow');
-                    el.classList.remove('lose-flash');
-                });
+                slotEls.forEach(el => { el.classList.remove('jackpot-glow','lose-flash'); });
             }
 
             function checkJackpot() {
-                const code = digits.slice(0, 4).join('');
+                const code = digits.slice(0,4).join('');
                 return JACKPOTS[code] || null;
             }
 
-            function getBetFromInput() {
-                let val = parseFloat(betInput.value);
-                if (isNaN(val) || val <= 0) val = 1e+30;
-                if (val > balance) val = balance * 0.5;
-                betInput.value = formatBigNumber(val);
-                currentBet = val;
-                return currentBet;
+            function getBet() {
+                let v = parseFloat(betInput.value.replace(',', '.'));
+                if (isNaN(v) || v < 1) v = 100;
+                if (v > balance) v = Math.floor(balance / 2);
+                if (v < 1) v = 1;
+                betInput.value = fmt(v);
+                currentBet = v;
+                return v;
             }
 
-            function setBet(value) {
-                let val = parseFloat(value);
-                if (isNaN(val) || val <= 0) val = 1e+30;
-                if (val > balance) val = balance * 0.5;
-                betInput.value = formatBigNumber(val);
-                currentBet = val;
+            function setBet(v) {
+                if (isNaN(v) || v < 1) v = 100;
+                if (v > balance) v = Math.floor(balance / 2);
+                if (v < 1) v = 1;
+                betInput.value = fmt(v);
+                currentBet = v;
             }
 
-            function generateFinalDigits() {
-                if (spinsUntilGuarantee <= 1) {
-                    const guaranteedCode = GUARANTEE_CODES[Math.floor(Math.random() * GUARANTEE_CODES.length)];
-                    for (let i = 0; i < 4; i++) {
-                        digits[i] = guaranteedCode[i];
-                    }
-                    digits[4] = randomDigit();
-                    spinsUntilGuarantee = GUARANTEE_SPINS;
+            function generate() {
+                if (spinsLeft <= 1) {
+                    const code = GUARANTEE_CODES[Math.floor(Math.random() * 3)];
+                    for (let i = 0; i < 4; i++) digits[i] = code[i];
+                    digits[4] = rnd();
+                    spinsLeft = GUARANTEE_SPINS;
                     return true;
                 } else {
-                    const exclude = [...GUARANTEE_CODES];
-                    const code = randomFourDigits(exclude);
-                    for (let i = 0; i < 4; i++) {
-                        digits[i] = code[i];
-                    }
-                    digits[4] = randomDigit();
-                    spinsUntilGuarantee--;
+                    const code = rnd4(GUARANTEE_CODES);
+                    for (let i = 0; i < 4; i++) digits[i] = code[i];
+                    digits[4] = rnd();
+                    spinsLeft--;
                     return false;
                 }
             }
 
-            function processResult() {
+            function result() {
                 clearGlow();
-                const jackpot = checkJackpot();
-
-                if (jackpot) {
-                    for (let i = 0; i < 4; i++) {
-                        slotEls[i].classList.add('jackpot-glow');
-                    }
-                    const winAmount = currentBet * jackpot.multiplier;
-                    balance += winAmount;
-                    saveBalance();
+                const jp = checkJackpot();
+                if (jp) {
+                    for (let i = 0; i < 4; i++) slotEls[i].classList.add('jackpot-glow');
+                    const win = currentBet * jp.multiplier;
+                    balance += win;
+                    save();
                     updateBalanceDisplay();
-                    messageEl.innerHTML = `💥 ДЖЕКПОТ ${jackpot.emoji} +${formatBigNumber(winAmount)} (×${jackpot.multiplier}) !!!`;
-                    if (currentBet > balance) setBet(balance * 0.5);
+                    messageEl.innerHTML = `💥 ДЖЕКПОТ ${jp.emoji} +${fmt(win)} (×${jp.multiplier}) !!!`;
+                    if (currentBet > balance) setBet(Math.floor(balance / 2));
                 } else {
                     balance -= currentBet;
-                    saveBalance();
+                    save();
                     updateBalanceDisplay();
                     slotEls.forEach(el => el.classList.add('lose-flash'));
-                    setTimeout(() => {
-                        slotEls.forEach(el => el.classList.remove('lose-flash'));
-                    }, 200);
-                    messageEl.innerHTML = `❌ МИМО • −${formatBigNumber(currentBet)}`;
-                    if (balance < currentBet) setBet(balance > 0 ? balance * 0.5 : 1e+30);
+                    setTimeout(() => slotEls.forEach(el => el.classList.remove('lose-flash')), 200);
+                    messageEl.innerHTML = `❌ МИМО • −${fmt(currentBet)}`;
+                    if (balance < currentBet) setBet(balance > 0 ? Math.floor(balance / 2) : 1);
                 }
-
-                if (balance <= 0) {
-                    messageEl.innerHTML = "💸 БАЛАНС ПУСТ • ЖДИ ДЕП";
-                }
+                if (balance <= 0) messageEl.innerHTML = "💸 БАЛАНС ПУСТ • ЖДИ ДЕП";
             }
 
             function spin() {
-                if (isSpinning) return;
-                getBetFromInput();
+                if (spinning) return;
+                getBet();
+                if (balance <= 0) { messageEl.innerHTML = "💸 НЕТ БАЛАНСА • ЖДИ ДЕП"; return; }
+                if (currentBet > balance) { messageEl.innerHTML = "⚠️ СТАВКА БОЛЬШЕ БАЛАНСА"; setBet(Math.floor(balance / 2)); return; }
+                if (currentBet < 1) setBet(1);
 
-                if (balance <= 0) {
-                    messageEl.innerHTML = "💸 НЕТ БАЛАНСА • ЖДИ ДЕП";
-                    return;
-                }
-                if (currentBet > balance) {
-                    messageEl.innerHTML = "⚠️ СТАВКА БОЛЬШЕ БАЛАНСА";
-                    setBet(balance * 0.5);
-                    return;
-                }
-                if (currentBet <= 0) setBet(1e+30);
-
-                isSpinning = true;
+                spinning = true;
                 spinBtn.disabled = true;
                 betInput.disabled = true;
 
-                let flickCount = 0;
-                const maxFlicks = 8;
-                const flickInterval = setInterval(() => {
-                    for (let i = 0; i < SLOTS; i++) {
-                        slotEls[i].textContent = randomDigit();
-                    }
-                    flickCount++;
-                    if (flickCount >= maxFlicks) {
-                        clearInterval(flickInterval);
-                        generateFinalDigits();
-                        renderDigits();
-                        processResult();
-                        isSpinning = false;
+                let flicks = 0;
+                const iv = setInterval(() => {
+                    for (let i = 0; i < SLOTS; i++) slotEls[i].textContent = rnd();
+                    flicks++;
+                    if (flicks >= 8) {
+                        clearInterval(iv);
+                        generate();
+                        render();
+                        result();
+                        spinning = false;
                         spinBtn.disabled = false;
                         betInput.disabled = false;
                         updateBalanceDisplay();
@@ -681,32 +562,30 @@
             }
 
             spinBtn.addEventListener('click', spin);
-            betInput.addEventListener('change', getBetFromInput);
+            betInput.addEventListener('change', getBet);
             resetBtn.addEventListener('click', resetBalance);
 
             document.addEventListener('keydown', function(e) {
-                if (e.code === 'Space' && !isSpinning && document.activeElement !== betInput) {
+                if (e.code === 'Space' && !spinning && document.activeElement !== betInput) {
                     e.preventDefault();
                     spin();
                 }
             });
 
             function init() {
-                for (let i = 0; i < SLOTS; i++) {
-                    digits[i] = randomDigit();
-                }
-                renderDigits();
-                balance = loadBalance();
-                setBet(1e+30);
+                for (let i = 0; i < SLOTS; i++) digits[i] = rnd();
+                render();
+                balance = load();
+                setBet(100);
                 updateBalanceDisplay();
                 clearGlow();
                 messageEl.innerHTML = "🎲 ДЕЛАЙ СТАВКУ • КРУТИ";
-                isSpinning = false;
+                spinning = false;
                 spinBtn.disabled = false;
                 betInput.disabled = false;
                 depTimer = DEP_INTERVAL;
-                spinsUntilGuarantee = GUARANTEE_SPINS;
-                startDepTimer();
+                spinsLeft = GUARANTEE_SPINS;
+                startTimer();
             }
 
             init();
