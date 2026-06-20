@@ -40,26 +40,28 @@
             background: #000;
             border: 3px solid #b5942e;
             border-radius: 35px;
-            padding: 10px 28px;
+            padding: 10px 20px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             color: #ffd966;
             font-weight: bold;
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             text-shadow: 0 0 12px #ffb703;
             letter-spacing: 1px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .balance-label {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: #b49450;
         }
         #balanceDisplay {
             font-family: 'Courier New', monospace;
-            font-size: 2.2rem;
-            min-width: 70px;
+            font-size: 1.6rem;
             text-align: center;
             transition: 0.2s;
+            word-break: break-all;
         }
 
         /* СТАВКА */
@@ -71,6 +73,8 @@
             border: 2px solid #997a2e;
             border-radius: 30px;
             padding: 10px 20px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         .bet-label {
             color: #ccb37e;
@@ -78,9 +82,9 @@
             font-size: 1rem;
         }
         #betInput {
-            width: 85px;
+            width: 140px;
             padding: 8px 10px;
-            font-size: 1.3rem;
+            font-size: 1rem;
             font-weight: bold;
             text-align: center;
             border-radius: 20px;
@@ -167,7 +171,7 @@
             50% { transform: scale(1.08); }
         }
 
-        /* КНОПКА */
+        /* КНОПКИ */
         .btn-spin {
             background: #c62828;
             border: none;
@@ -194,7 +198,6 @@
             pointer-events: none;
         }
 
-        /* КНОПКА СБРОСА */
         .btn-reset {
             background: #333;
             border: 2px solid #555;
@@ -228,7 +231,7 @@
             border: 1px solid #997a2e;
         }
 
-        /* ПРЕДУПРЕЖДЕНИЕ */
+        /* АНТИ-ЧИТ ПРЕДУПРЕЖДЕНИЕ */
         .anti-cheat-warning {
             display: none;
             position: fixed;
@@ -261,8 +264,11 @@
                 padding: 12px 30px;
             }
             #betInput {
-                width: 65px;
-                font-size: 1.1rem;
+                width: 110px;
+                font-size: 0.85rem;
+            }
+            #balanceDisplay {
+                font-size: 1.2rem;
             }
         }
     </style>
@@ -271,21 +277,21 @@
 
     <!-- АНТИ-ЧИТ ПРЕДУПРЕЖДЕНИЕ -->
     <div class="anti-cheat-warning" id="antiCheatWarning">
-        <div>🚫 ЧИТЫ ЗАПРЕЩЕНЫ 🚫</div>
-        <div style="font-size:1rem; margin-top:20px; color:#ff9800;">Закрой инструменты разработчика</div>
+        <div>🚫 НЕ ЛЕЗЬ В КОД 🚫</div>
+        <div style="font-size:1rem; margin-top:20px; color:#ff9800;">Закрой DevTools и обнови страницу</div>
     </div>
 
     <div class="machine" id="machineContainer">
         <!-- Баланс -->
         <div class="balance-panel">
             <span class="balance-label">💰 БАЛАНС</span>
-            <span id="balanceDisplay">1488</span>
+            <span id="balanceDisplay">1.488e+3</span>
         </div>
 
         <!-- Ставка -->
         <div class="bet-panel">
             <span class="bet-label">🎯 СТАВКА</span>
-            <input type="number" id="betInput" value="100" min="1" step="1">
+            <input type="text" id="betInput" value="100">
         </div>
 
         <!-- 5 слотов -->
@@ -315,98 +321,111 @@
     </div>
 
     <script>
-        // ==================== ЗАЩИТА ОТ ИНСПЕКТОРА КОДА ====================
+        // ==================== ЗАЩИТА ОТ DEVTOOLS (FIREFOX + CHROME) ====================
         (function() {
             const warning = document.getElementById('antiCheatWarning');
             const machine = document.getElementById('machineContainer');
+            let devToolsOpen = false;
 
-            // Проверка на DevTools через размер окна
-            function detectDevTools() {
+            // Метод 1: detect DevTools через размер окна
+            function detectBySize() {
                 const threshold = 160;
-                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-                return widthThreshold || heightThreshold;
+                const widthDiff = window.outerWidth - window.innerWidth > threshold;
+                const heightDiff = window.outerHeight - window.innerHeight > threshold;
+                return widthDiff || heightDiff;
             }
 
-            // Проверка через console.log (переопределение)
-            function checkConsoleOpen() {
-                const element = new Image();
-                Object.defineProperty(element, 'id', {
-                    get: function() {
-                        // Срабатывает только при открытой консоли
-                        showWarning();
-                        return '';
-                    }
-                });
-                console.log(element);
-            }
-
-            // Проверка через время выполнения (отладчик замедляет)
-            function checkDebugger() {
+            // Метод 2: через performance (debugger замедляет)
+            function detectByTiming() {
                 const start = performance.now();
                 debugger;
                 const end = performance.now();
-                if (end - start > 100) {
-                    showWarning();
-                }
+                return (end - start) > 100;
+            }
+
+            // Метод 3: через console.table / console.log (Firefox + Chrome)
+            function detectByConsole() {
+                let detected = false;
+                const testObj = { a: 1 };
+                const originalTable = console.table;
+                
+                console.table = function() {
+                    detected = true;
+                    console.table = originalTable;
+                };
+                
+                console.table(testObj);
+                console.table = originalTable;
+                return detected;
+            }
+
+            // Метод 4: через requestAnimationFrame (Firefox)
+            function detectByRAF() {
+                let detected = false;
+                const start = performance.now();
+                requestAnimationFrame(() => {
+                    const end = performance.now();
+                    if (end - start > 50) detected = true;
+                });
+                return detected;
             }
 
             function showWarning() {
-                warning.classList.add('active');
-                machine.style.display = 'none';
-                // Очищаем localStorage при попытке читерства
-                try {
-                    localStorage.removeItem('kazik_balance');
-                } catch(e) {}
+                if (!devToolsOpen) {
+                    devToolsOpen = true;
+                    warning.classList.add('active');
+                    machine.style.display = 'none';
+                    try {
+                        localStorage.removeItem('kazik_balance');
+                    } catch(e) {}
+                }
             }
 
-            function hideWarning() {
-                warning.classList.remove('active');
-                machine.style.display = '';
-            }
-
-            // Постоянная проверка DevTools
+            // Постоянная проверка
             setInterval(() => {
-                if (detectDevTools()) {
-                    showWarning();
-                } else if (warning.classList.contains('active')) {
-                    // Не скрываем автоматически — нужно обновить страницу
-                }
-            }, 1000);
-
-            // Защита от отладчика
-            setInterval(() => {
-                const start = performance.now();
-                debugger;
-                const end = performance.now();
-                if (end - start > 100) {
+                if (detectBySize()) {
                     showWarning();
                 }
-            }, 2000);
+            }, 500);
 
-            // Блокировка клавиши F12 и Ctrl+Shift+I/C/J
+            setInterval(() => {
+                if (detectByTiming()) {
+                    showWarning();
+                }
+            }, 1500);
+
+            // Блокировка клавиш
             document.addEventListener('keydown', function(e) {
                 if (
                     e.key === 'F12' ||
-                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J')) ||
-                    (e.ctrlKey && e.key === 'U')
+                    e.keyCode === 123 ||
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J' || e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) ||
+                    (e.ctrlKey && e.key === 'U') ||
+                    (e.ctrlKey && e.key === 'S') ||
+                    (e.metaKey && e.altKey && e.key === 'I') ||
+                    (e.metaKey && e.altKey && e.key === 'J') ||
+                    (e.metaKey && e.altKey && e.key === 'C')
                 ) {
                     e.preventDefault();
+                    e.stopPropagation();
                     showWarning();
                     return false;
                 }
-            });
+            }, true);
 
-            // Блокировка правой кнопки мыши
+            // Блокировка правой кнопки
             document.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 return false;
             });
 
-            // Дополнительная защита: очистка консоли
+            // Очистка консоли
             setTimeout(() => {
                 console.clear();
-            }, 100);
+                console.log = () => {};
+                console.warn = () => {};
+                console.error = () => {};
+            }, 50);
         })();
 
         // ==================== ОСНОВНОЙ КОД ====================
@@ -426,8 +445,8 @@
             const STORAGE_KEY = 'kazik_balance';
 
             let digits = ["0", "0", "0", "0", "0"];
-            let balance = 1488;
-            let currentBet = 100;
+            let balance = 1.23232e+67; // ОГРОМНЫЙ ДРОБНЫЙ БАЛАНС
+            let currentBet = 1e+30;
             let depTimer = DEP_INTERVAL;
             let spinsUntilGuarantee = GUARANTEE_SPINS;
             let timerInterval = null;
@@ -448,7 +467,15 @@
             let isSpinning = false;
             let depMessageTimeout = null;
 
-            // Сохранение
+            // Форматирование большого числа
+            function formatBigNumber(num) {
+                if (num >= 1e+6 || num <= 1e-6) {
+                    return num.toExponential(5);
+                }
+                return num.toFixed(2);
+            }
+
+            // Сохранение (храним как строку для больших чисел)
             function saveBalance() {
                 try {
                     localStorage.setItem(STORAGE_KEY, balance.toString());
@@ -459,19 +486,19 @@
                 try {
                     const saved = localStorage.getItem(STORAGE_KEY);
                     if (saved !== null) {
-                        const parsed = parseInt(saved);
+                        const parsed = parseFloat(saved);
                         if (!isNaN(parsed) && parsed >= 0) return parsed;
                     }
                 } catch (e) {}
-                return 1488;
+                return 1.23232e+67;
             }
 
             function resetBalance() {
-                balance = 1488;
+                balance = 1.23232e+67;
                 saveBalance();
                 updateBalanceDisplay();
-                if (currentBet > balance) setBet(balance > 0 ? balance : 1);
-                messageEl.innerHTML = "🔄 БАЛАНС СБРОШЕН • 1488";
+                if (currentBet > balance) setBet(balance * 0.01);
+                messageEl.innerHTML = "🔄 БАЛАНС СБРОШЕН";
             }
 
             function giveDep() {
@@ -490,10 +517,10 @@
                 if (depMessageTimeout) clearTimeout(depMessageTimeout);
                 depMessageTimeout = setTimeout(() => {
                     messageEl.classList.remove('dep-message');
-                    messageEl.innerHTML = `🧠 +${DEP_AMOUNT} • БАЛАНС ${balance}`;
+                    messageEl.innerHTML = `🧠 +${DEP_AMOUNT}`;
                 }, 1500);
 
-                if (currentBet > balance) setBet(balance > 0 ? balance : 1);
+                if (currentBet > balance) setBet(balance * 0.01);
             }
 
             function startDepTimer() {
@@ -529,7 +556,7 @@
             }
 
             function updateBalanceDisplay() {
-                balanceEl.textContent = balance;
+                balanceEl.textContent = formatBigNumber(balance);
                 balanceEl.style.color = balance < currentBet ? '#ff6b6b' : '#ffd966';
             }
 
@@ -546,19 +573,19 @@
             }
 
             function getBetFromInput() {
-                let val = parseInt(betInput.value);
-                if (isNaN(val) || val < 1) val = 1;
-                if (val > balance) val = balance;
-                betInput.value = val;
+                let val = parseFloat(betInput.value);
+                if (isNaN(val) || val <= 0) val = 1e+30;
+                if (val > balance) val = balance * 0.5;
+                betInput.value = formatBigNumber(val);
                 currentBet = val;
                 return currentBet;
             }
 
             function setBet(value) {
-                let val = parseInt(value);
-                if (isNaN(val) || val < 1) val = 1;
-                if (val > balance) val = balance;
-                betInput.value = val;
+                let val = parseFloat(value);
+                if (isNaN(val) || val <= 0) val = 1e+30;
+                if (val > balance) val = balance * 0.5;
+                betInput.value = formatBigNumber(val);
                 currentBet = val;
             }
 
@@ -595,8 +622,8 @@
                     balance += winAmount;
                     saveBalance();
                     updateBalanceDisplay();
-                    messageEl.innerHTML = `💥 ДЖЕКПОТ ${jackpot.emoji} +${winAmount} (×${jackpot.multiplier}) !!!`;
-                    if (currentBet > balance) setBet(balance);
+                    messageEl.innerHTML = `💥 ДЖЕКПОТ ${jackpot.emoji} +${formatBigNumber(winAmount)} (×${jackpot.multiplier}) !!!`;
+                    if (currentBet > balance) setBet(balance * 0.5);
                 } else {
                     balance -= currentBet;
                     saveBalance();
@@ -605,8 +632,8 @@
                     setTimeout(() => {
                         slotEls.forEach(el => el.classList.remove('lose-flash'));
                     }, 200);
-                    messageEl.innerHTML = `❌ МИМО • −${currentBet}`;
-                    if (balance < currentBet) setBet(balance > 0 ? balance : 1);
+                    messageEl.innerHTML = `❌ МИМО • −${formatBigNumber(currentBet)}`;
+                    if (balance < currentBet) setBet(balance > 0 ? balance * 0.5 : 1e+30);
                 }
 
                 if (balance <= 0) {
@@ -624,10 +651,10 @@
                 }
                 if (currentBet > balance) {
                     messageEl.innerHTML = "⚠️ СТАВКА БОЛЬШЕ БАЛАНСА";
-                    setBet(balance);
+                    setBet(balance * 0.5);
                     return;
                 }
-                if (currentBet < 1) setBet(1);
+                if (currentBet <= 0) setBet(1e+30);
 
                 isSpinning = true;
                 spinBtn.disabled = true;
@@ -670,7 +697,7 @@
                 }
                 renderDigits();
                 balance = loadBalance();
-                setBet(100);
+                setBet(1e+30);
                 updateBalanceDisplay();
                 clearGlow();
                 messageEl.innerHTML = "🎲 ДЕЛАЙ СТАВКУ • КРУТИ";
