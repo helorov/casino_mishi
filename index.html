@@ -194,6 +194,23 @@
             pointer-events: none;
         }
 
+        /* КНОПКА СБРОСА */
+        .btn-reset {
+            background: #333;
+            border: 2px solid #555;
+            color: #999;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-reset:active {
+            background: #555;
+            color: #fff;
+        }
+
         /* ТАБЛИЦА */
         .prizes {
             display: flex;
@@ -209,6 +226,28 @@
             padding: 5px 12px;
             border-radius: 25px;
             border: 1px solid #997a2e;
+        }
+
+        /* ПРЕДУПРЕЖДЕНИЕ */
+        .anti-cheat-warning {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: #ff4444;
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+        }
+        .anti-cheat-warning.active {
+            display: flex;
         }
 
         @media (max-width: 420px) {
@@ -229,7 +268,14 @@
     </style>
 </head>
 <body>
-    <div class="machine">
+
+    <!-- АНТИ-ЧИТ ПРЕДУПРЕЖДЕНИЕ -->
+    <div class="anti-cheat-warning" id="antiCheatWarning">
+        <div>🚫 ЧИТЫ ЗАПРЕЩЕНЫ 🚫</div>
+        <div style="font-size:1rem; margin-top:20px; color:#ff9800;">Закрой инструменты разработчика</div>
+    </div>
+
+    <div class="machine" id="machineContainer">
         <!-- Баланс -->
         <div class="balance-panel">
             <span class="balance-label">💰 БАЛАНС</span>
@@ -239,7 +285,7 @@
         <!-- Ставка -->
         <div class="bet-panel">
             <span class="bet-label">🎯 СТАВКА</span>
-            <input type="number" id="betInput" value="100" min="1" max="9999" step="1">
+            <input type="number" id="betInput" value="100" min="1" step="1">
         </div>
 
         <!-- 5 слотов -->
@@ -256,8 +302,9 @@
             🎲 ДЕЛАЙ СТАВКУ • КРУТИ
         </div>
 
-        <!-- Кнопка -->
+        <!-- Кнопки -->
         <button class="btn-spin" id="spinButton">🎰 СПИН</button>
+        <button class="btn-reset" id="resetButton">🔄 СБРОС БАЛАНСА</button>
 
         <!-- Таблица -->
         <div class="prizes">
@@ -268,6 +315,101 @@
     </div>
 
     <script>
+        // ==================== ЗАЩИТА ОТ ИНСПЕКТОРА КОДА ====================
+        (function() {
+            const warning = document.getElementById('antiCheatWarning');
+            const machine = document.getElementById('machineContainer');
+
+            // Проверка на DevTools через размер окна
+            function detectDevTools() {
+                const threshold = 160;
+                const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+                return widthThreshold || heightThreshold;
+            }
+
+            // Проверка через console.log (переопределение)
+            function checkConsoleOpen() {
+                const element = new Image();
+                Object.defineProperty(element, 'id', {
+                    get: function() {
+                        // Срабатывает только при открытой консоли
+                        showWarning();
+                        return '';
+                    }
+                });
+                console.log(element);
+            }
+
+            // Проверка через время выполнения (отладчик замедляет)
+            function checkDebugger() {
+                const start = performance.now();
+                debugger;
+                const end = performance.now();
+                if (end - start > 100) {
+                    showWarning();
+                }
+            }
+
+            function showWarning() {
+                warning.classList.add('active');
+                machine.style.display = 'none';
+                // Очищаем localStorage при попытке читерства
+                try {
+                    localStorage.removeItem('kazik_balance');
+                } catch(e) {}
+            }
+
+            function hideWarning() {
+                warning.classList.remove('active');
+                machine.style.display = '';
+            }
+
+            // Постоянная проверка DevTools
+            setInterval(() => {
+                if (detectDevTools()) {
+                    showWarning();
+                } else if (warning.classList.contains('active')) {
+                    // Не скрываем автоматически — нужно обновить страницу
+                }
+            }, 1000);
+
+            // Защита от отладчика
+            setInterval(() => {
+                const start = performance.now();
+                debugger;
+                const end = performance.now();
+                if (end - start > 100) {
+                    showWarning();
+                }
+            }, 2000);
+
+            // Блокировка клавиши F12 и Ctrl+Shift+I/C/J
+            document.addEventListener('keydown', function(e) {
+                if (
+                    e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J')) ||
+                    (e.ctrlKey && e.key === 'U')
+                ) {
+                    e.preventDefault();
+                    showWarning();
+                    return false;
+                }
+            });
+
+            // Блокировка правой кнопки мыши
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Дополнительная защита: очистка консоли
+            setTimeout(() => {
+                console.clear();
+            }, 100);
+        })();
+
+        // ==================== ОСНОВНОЙ КОД ====================
         (function() {
             const SLOTS = 5;
 
@@ -277,9 +419,11 @@
                 "228":  { emoji: "🍀", multiplier: 25 }
             };
 
-            const DEP_INTERVAL = 2 * 60; // 2 минуты
+            const GUARANTEE_CODES = ["1488", "1337", "228"];
+            const DEP_INTERVAL = 2 * 60;
             const DEP_AMOUNT = 1500;
-            const GUARANTEE_SPINS = 5; // каждые 5 попыток - гарант 1488
+            const GUARANTEE_SPINS = 5;
+            const STORAGE_KEY = 'kazik_balance';
 
             let digits = ["0", "0", "0", "0", "0"];
             let balance = 1488;
@@ -299,12 +443,40 @@
             const messageEl = document.getElementById('messageDisplay');
             const spinBtn = document.getElementById('spinButton');
             const betInput = document.getElementById('betInput');
+            const resetBtn = document.getElementById('resetButton');
 
             let isSpinning = false;
             let depMessageTimeout = null;
 
+            // Сохранение
+            function saveBalance() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, balance.toString());
+                } catch (e) {}
+            }
+
+            function loadBalance() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved !== null) {
+                        const parsed = parseInt(saved);
+                        if (!isNaN(parsed) && parsed >= 0) return parsed;
+                    }
+                } catch (e) {}
+                return 1488;
+            }
+
+            function resetBalance() {
+                balance = 1488;
+                saveBalance();
+                updateBalanceDisplay();
+                if (currentBet > balance) setBet(balance > 0 ? balance : 1);
+                messageEl.innerHTML = "🔄 БАЛАНС СБРОШЕН • 1488";
+            }
+
             function giveDep() {
                 balance += DEP_AMOUNT;
+                saveBalance();
                 updateBalanceDisplay();
 
                 slotEls.forEach(el => el.classList.add('dep-flash'));
@@ -377,7 +549,6 @@
                 let val = parseInt(betInput.value);
                 if (isNaN(val) || val < 1) val = 1;
                 if (val > balance) val = balance;
-                if (val > 9999) val = 9999;
                 betInput.value = val;
                 currentBet = val;
                 return currentBet;
@@ -387,16 +558,13 @@
                 let val = parseInt(value);
                 if (isNaN(val) || val < 1) val = 1;
                 if (val > balance) val = balance;
-                if (val > 9999) val = 9999;
                 betInput.value = val;
                 currentBet = val;
             }
 
-            // Генерация цифр с учётом гаранта
             function generateFinalDigits() {
                 if (spinsUntilGuarantee <= 1) {
-                    // Гарант 1488
-                    const guaranteedCode = "1488";
+                    const guaranteedCode = GUARANTEE_CODES[Math.floor(Math.random() * GUARANTEE_CODES.length)];
                     for (let i = 0; i < 4; i++) {
                         digits[i] = guaranteedCode[i];
                     }
@@ -404,8 +572,7 @@
                     spinsUntilGuarantee = GUARANTEE_SPINS;
                     return true;
                 } else {
-                    // Обычный спин: исключаем 1488 чтобы не испортить гарант
-                    const exclude = ["1488"];
+                    const exclude = [...GUARANTEE_CODES];
                     const code = randomFourDigits(exclude);
                     for (let i = 0; i < 4; i++) {
                         digits[i] = code[i];
@@ -426,12 +593,13 @@
                     }
                     const winAmount = currentBet * jackpot.multiplier;
                     balance += winAmount;
+                    saveBalance();
                     updateBalanceDisplay();
-                    // Обычное сообщение о джекпоте, без намёка на гарант
                     messageEl.innerHTML = `💥 ДЖЕКПОТ ${jackpot.emoji} +${winAmount} (×${jackpot.multiplier}) !!!`;
                     if (currentBet > balance) setBet(balance);
                 } else {
                     balance -= currentBet;
+                    saveBalance();
                     updateBalanceDisplay();
                     slotEls.forEach(el => el.classList.add('lose-flash'));
                     setTimeout(() => {
@@ -487,9 +655,10 @@
 
             spinBtn.addEventListener('click', spin);
             betInput.addEventListener('change', getBetFromInput);
+            resetBtn.addEventListener('click', resetBalance);
 
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && !isSpinning) {
+            document.addEventListener('keydown', function(e) {
+                if (e.code === 'Space' && !isSpinning && document.activeElement !== betInput) {
                     e.preventDefault();
                     spin();
                 }
@@ -500,7 +669,7 @@
                     digits[i] = randomDigit();
                 }
                 renderDigits();
-                balance = 1488;
+                balance = loadBalance();
                 setBet(100);
                 updateBalanceDisplay();
                 clearGlow();
